@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Y68° — Find Your Street Ballers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+
+  <!-- Global liquid-glass distortion filter -->
+  <svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+    <defs>
+      <filter id="lg-distort" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.004 0.008" numOctaves="1" result="turbulence"/>
+        <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="35" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Film-grain noise overlay -->
+  <div class="noise-overlay"></div>
+
+  <!-- Persistent 3D ball canvas -->
+  <canvas id="hero-canvas"></canvas>
+
+  <!-- ============ NAVBAR ============ -->
+  <nav class="navbar" id="navbar">
+    <a href="#hero-section" class="nav-logo">Y68°</a>
+    <div class="nav-links">
+      <a href="#hero-section">Play</a>
+      <a href="#stats-section">Leaderboard</a>
+      <a href="#how-section">How it works</a>
+      <a href="#site-footer">About</a>
+    </div>
+    <button class="profile-btn glass-pill">
+      <span class="pulse-dot"></span>
+      My profile
+    </button>
+  </nav>
+
+  <!-- ============ HERO ============ -->
+  <section id="hero-section">
+
+    <!-- Product Hunt badge -->
+    <a class="ph-badge glass-card" id="ph-badge" href="#" onclick="return false;">
+      <svg class="ph-logo" viewBox="0 0 40 40" width="34" height="34" aria-hidden="true">
+        <circle cx="20" cy="20" r="20" fill="#FF6154"/>
+        <path d="M22.5 11h-7.5v18h3.4v-5.4h4.1a6.3 6.3 0 0 0 0-12.6zm0 9.3h-4.1v-6h4.1a3 3 0 0 1 0 6z" fill="#fff"/>
+      </svg>
+      <span class="ph-text">
+        <strong>#1 Product of the Day</strong>
+        <em>Product Hunt</em>
+      </span>
+    </a>
+
+    <!-- Event card -->
+    <article class="event-card" id="event-card">
+      <div class="ec-bend"></div>
+      <div class="ec-face"></div>
+      <div class="ec-edge"></div>
+      <div class="ec-content">
+
+        <div class="ec-photo">
+          <img src="https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=560&q=80" alt="Street basketball court" loading="lazy" />
+          <div class="ec-photo-shade"></div>
+          <div class="ec-photo-pills">
+            <span class="ec-pill">12 min from</span>
+            <span class="ec-pill"><span class="ec-dot"></span> Home</span>
+          </div>
+          <div class="ec-photo-caption">
+            <h3>Boooys night out</h3>
+            <span>May 12, 9 PM</span>
+          </div>
+        </div>
+
+        <div class="ec-organizer">
+          <div class="org-av grad-1"></div>
+          <div class="org-meta">
+            <strong>Matthew Walker</strong>
+            <span>organizer</span>
+          </div>
+          <div class="org-mini">
+            <span class="mini-av grad-2"></span>
+            <span class="mini-av grad-3"></span>
+            <span class="mini-av grad-4"></span>
+            <span class="mini-plus">+3</span>
+          </div>
+        </div>
+
+        <div class="ec-venue">
+          <strong>Shōten</strong>
+          <span>123 Sakura Park, Sakyo-ku, Kyoto</span>
+        </div>
+
+        <div class="ec-actions">
+          <button class="ec-btn ghost">Check on map</button>
+          <button class="ec-btn filled">Join game</button>
+        </div>
+        <span class="ec-free">✓ Free event</span>
+
+      </div>
+    </article>
+
+    <!-- Hero text -->
+    <div class="hero-text" id="hero-text">
+      <span class="eyebrow hero-eyebrow">JOIN GAME</span>
+      <h1 class="hero-headline">
+        <span class="hl-line">FIND YOUR</span>
+        <span class="hl-line">STREET</span>
+        <span class="hl-line">BALLERS</span>
+      </h1>
+      <div class="hero-brand">Y68°</div>
+      <div class="pricing-strip glass-pill">
+        <span class="price"><strong>$100</strong> / Early Access</span>
+        <button class="price-cta">Get In →</button>
+      </div>
+    </div>
+
+    <!-- Signature -->
+    <div class="sig-wrap" id="sig-wrap">
+      <svg viewBox="0 0 220 80" width="160" height="60" fill="none" aria-hidden="true">
+        <path class="sp1" d="M10 55 C 30 10, 55 10, 60 45 C 64 70, 80 70, 95 35 C 105 12, 120 20, 118 50" stroke="#0f0f0f" stroke-width="2.5" stroke-linecap="round"/>
+        <path class="sp2" d="M120 48 C 140 15, 165 18, 170 45 C 173 62, 188 60, 200 38" stroke="#0f0f0f" stroke-width="2.5" stroke-linecap="round"/>
+        <path class="sp3" d="M150 60 L 210 60" stroke="#0f0f0f" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- Drag hint -->
+    <div class="drag-hint">↔ drag to spin</div>
+
+    <!-- Scroll indicator -->
+    <div class="scroll-indicator">
+      <span class="scroll-line"></span>
+      <span class="scroll-text">scroll</span>
+    </div>
+
+    <!-- Nav arrow -->
+    <button class="nav-arrow glass-pill" id="nav-arrow" aria-label="Next">›</button>
+  </section>
+
+  <!-- ============ STATS ============ -->
+  <section id="stats-section">
+    <div class="section-watermark stats-watermark">STAT</div>
+    <div class="stats-left">
+      <span class="eyebrow">By The Numbers</span>
+      <h2 class="section-headline">THE STREETS<br>ARE ALIVE.</h2>
+      <p class="section-body">From Tokyo to London, Lagos to NYC — ballers are running Y68° games every single day.</p>
+      <div class="stats-grid">
+        <div class="stat-card glass-card">
+          <span class="stat-num">24K+</span>
+          <span class="stat-label">Active Ballers</span>
+          <span class="stat-delta up">↑ +12% this month</span>
+        </div>
+        <div class="stat-card glass-card">
+          <span class="stat-num">840</span>
+          <span class="stat-label">Games This Week</span>
+          <span class="stat-delta up">↑ +8% vs last week</span>
+        </div>
+        <div class="stat-card glass-card">
+          <span class="stat-num">62</span>
+          <span class="stat-label">Cities Worldwide</span>
+          <span class="stat-delta neutral">→ 5 new this quarter</span>
+        </div>
+        <div class="stat-card glass-card">
+          <span class="stat-num">4.9★</span>
+          <span class="stat-label">Avg Game Rating</span>
+          <span class="stat-delta up">↑ Consistent</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section id="how-section">
+    <div class="section-watermark how-watermark">PLAY</div>
+    <div class="how-content">
+      <span class="eyebrow">How It Works</span>
+      <h2 class="section-headline">THREE STEPS<br>TO THE COURT</h2>
+
+      <div class="step-item glass-card">
+        <span class="step-num">01</span>
+        <div class="step-meta">
+          <strong>Find a Game</strong>
+          <p>Browse live and upcoming street games near you. Filter by skill level, location, or time slot.</p>
+        </div>
+        <span class="step-arrow">→</span>
+      </div>
+
+      <div class="step-item glass-card">
+        <span class="step-num">02</span>
+        <div class="step-meta">
+          <strong>Join or Create</strong>
+          <p>Tap to join instantly or spin up your own game in under 30 seconds. Set rules, capacity, and skill tier.</p>
+        </div>
+        <span class="step-arrow">→</span>
+      </div>
+
+      <div class="step-item glass-card">
+        <span class="step-num">03</span>
+        <div class="step-meta">
+          <strong>Build Your Rep</strong>
+          <p>Every game earns you points. Climb the city leaderboard, unlock badges, get scouted.</p>
+        </div>
+        <span class="step-arrow">→</span>
+      </div>
+
+      <div class="how-cta">
+        <button class="dark-btn">Get on the Court →</button>
+        <a class="ph-badge glass-pill" href="#" onclick="return false;">
+          <svg class="ph-logo" viewBox="0 0 40 40" width="28" height="28" aria-hidden="true">
+            <circle cx="20" cy="20" r="20" fill="#FF6154"/>
+            <path d="M22.5 11h-7.5v18h3.4v-5.4h4.1a6.3 6.3 0 0 0 0-12.6zm0 9.3h-4.1v-6h4.1a3 3 0 0 1 0 6z" fill="#fff"/>
+          </svg>
+          <span class="ph-text">
+            <em>Featured on</em>
+            <strong>Product Hunt · #1</strong>
+          </span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer id="site-footer">
+    <div class="footer-bg-ball"></div>
+    <div class="footer-inner">
+
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="footer-logo">Y68°</div>
+          <p class="footer-tagline">The world's most premium street volleyball network.</p>
+          <div class="footer-socials">
+            <a class="glass-pill" href="#" onclick="return false;">𝕏 Twitter</a>
+            <a class="glass-pill" href="#" onclick="return false;">▶ Instagram</a>
+            <a class="glass-pill" href="#" onclick="return false;">in LinkedIn</a>
+          </div>
+        </div>
+
+        <div class="footer-links">
+          <div class="footer-col">
+            <h4>Product</h4>
+            <a href="#" onclick="return false;">Find Games</a>
+            <a href="#" onclick="return false;">Leaderboard</a>
+            <a href="#" onclick="return false;">Court Map</a>
+            <a href="#" onclick="return false;">Create Event</a>
+          </div>
+          <div class="footer-col">
+            <h4>Community</h4>
+            <a href="#" onclick="return false;">Players</a>
+            <a href="#" onclick="return false;">Teams</a>
+            <a href="#" onclick="return false;">Tournaments</a>
+            <a href="#" onclick="return false;">Rankings</a>
+          </div>
+          <div class="footer-col">
+            <h4>Company</h4>
+            <a href="#" onclick="return false;">About</a>
+            <a href="#" onclick="return false;">Blog</a>
+            <a href="#" onclick="return false;">Press Kit</a>
+            <a href="#" onclick="return false;">Contact</a>
+          </div>
+        </div>
+
+        <div class="footer-newsletter">
+          <div class="newsletter-card">
+            <h4>Stay in the game</h4>
+            <p>Drop your email. Get notified when games go live near you.</p>
+            <form class="newsletter-form" onsubmit="return false;">
+              <input type="email" placeholder="you@email.com" aria-label="Email" />
+              <button type="submit" aria-label="Subscribe">→</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div class="footer-legal">
+          <span>© 2026 Y68°. All rights reserved.</span>
+          <span class="legal-links"><a href="#" onclick="return false;">Privacy</a> · <a href="#" onclick="return false;">Terms</a> · <a href="#" onclick="return false;">Cookies</a></span>
+        </div>
+        <div class="footer-ph glass-pill">
+          <svg class="ph-logo" viewBox="0 0 40 40" width="22" height="22" aria-hidden="true">
+            <circle cx="20" cy="20" r="20" fill="#FF6154"/>
+            <path d="M22.5 11h-7.5v18h3.4v-5.4h4.1a6.3 6.3 0 0 0 0-12.6zm0 9.3h-4.1v-6h4.1a3 3 0 0 1 0 6z" fill="#fff"/>
+          </svg>
+          Product of the Day #1
+        </div>
+        <div class="footer-ticker">
+          <div class="ticker-track">
+            <span>TOKYO · KYOTO · OSAKA · SEOUL · DUBAI · NYC · LONDON · PARIS · MUMBAI · SYDNEY · </span>
+            <span>TOKYO · KYOTO · OSAKA · SEOUL · DUBAI · NYC · LONDON · PARIS · MUMBAI · SYDNEY · </span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </footer>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
