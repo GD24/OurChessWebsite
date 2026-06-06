@@ -608,9 +608,11 @@ a { text-decoration: none; color: inherit; }
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-top: 2.2rem;
 }
+.dark-btn { display: inline-flex; align-items: center; white-space: nowrap; }
 .dark-btn {
   background: var(--ink);
   color: #fff;
@@ -717,6 +719,14 @@ a { text-decoration: none; color: inherit; }
   transition: transform 0.2s var(--ease-out);
 }
 .newsletter-form button:hover { transform: translateX(2px); }
+.newsletter-contact {
+  margin: 1rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.55);
+}
+.newsletter-contact a { color: #fff; font-weight: 600; }
+.newsletter-contact a:hover { text-decoration: underline; }
 
 .footer-bottom {
   display: flex;
