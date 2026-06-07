@@ -8,6 +8,11 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
+// Ignore the resize events Android/iOS fire while the address bar slides in and
+// out during scroll — otherwise the scroll math recalculates mid-scroll and the
+// model visibly jumps.
+ScrollTrigger.config({ ignoreMobileResize: true });
+
 /* ============================================================
    RENDERER / SCENE / CAMERA
    ============================================================ */
@@ -357,7 +362,10 @@ animate();
 /* ============================================================
    RESIZE
    ============================================================ */
-window.addEventListener('resize', () => {
+let lastWidth = window.innerWidth;
+let resizeTimer = null;
+
+function handleResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -373,7 +381,18 @@ window.addEventListener('resize', () => {
       ball.scale.setScalar(baseScale * hero.scale);
     }
   }
-  ScrollTrigger.refresh();
+
+  // Only recompute scroll positions on a real layout change (width / rotation).
+  // Height-only changes are the mobile address bar and must not trigger a refresh.
+  if (window.innerWidth !== lastWidth) {
+    lastWidth = window.innerWidth;
+    ScrollTrigger.refresh();
+  }
+}
+
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(handleResize, 150);
 });
 
 /* ============================================================
