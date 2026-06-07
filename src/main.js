@@ -17,18 +17,32 @@ ScrollTrigger.config({ ignoreMobileResize: true });
    RENDERER / SCENE / CAMERA
    ============================================================ */
 const canvas = document.getElementById('hero-canvas');
+
+// Use the canvas's CSS box (100vw × 100vh) for sizing rather than
+// window.innerHeight. On mobile, innerHeight changes as the address bar slides,
+// but the canvas's CSS height (vh) stays fixed — so the model never stretches
+// or shifts during scroll.
+function viewSize() {
+  const w = canvas.clientWidth || window.innerWidth;
+  const h = canvas.clientHeight || window.innerHeight;
+  return { w, h };
+}
+
 const renderer = new THREE.WebGLRenderer({
   canvas, alpha: true, antialias: true, powerPreference: 'high-performance',
 });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+{
+  const { w, h } = viewSize();
+  renderer.setSize(w, h, false);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+}
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.64;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
 
-const camera = new THREE.PerspectiveCamera(32, window.innerWidth / window.innerHeight, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(32, viewSize().w / viewSize().h, 0.1, 200);
 camera.position.set(0, 0, 5.5);
 
 /* ---------- Environment reflections ---------- */
@@ -78,6 +92,14 @@ const isMobile = () => window.innerWidth <= MOBILE_BP;
 const SECTIONS = () => (isMobile() ? WAYPOINTS.mobile : WAYPOINTS.desktop);
 let lastWaypoint = null;
 
+// Frame-based smoothing: scroll only sets a target; the render loop eases the
+// model toward it every frame. This is smoother than GSAP scrub and settles
+// quickly when you stop scrolling (no lingering "readjust" drift).
+const targetPos = new THREE.Vector3();
+let targetScale = 1;
+let followEnabled = false;
+const FOLLOW = 0.09; // easing per frame (~0.15s time constant at 60fps)
+
 let ball = null;
 let baseScale = 1;
 let ballLoaded = false;
@@ -104,6 +126,8 @@ loader.load('/models/basketball.glb', (gltf) => {
   const hero = SECTIONS().hero;
   ball.scale.setScalar(baseScale * hero.scale);
   ball.position.set(hero.x, hero.y, hero.z);
+  targetPos.set(hero.x, hero.y, hero.z);
+  targetScale = baseScale * hero.scale;
 
   // Material overrides — gritty street look
   ball.traverse((child) => {
@@ -143,7 +167,18 @@ function ballEntrance() {
   gsap.to(ball.position, {
     y: finalY,
     duration: 1.3, ease: 'expo.out', delay: 0.5,
-    onComplete: enableDrag,
+    onComplete: () => {
+      // Hand control to the frame-based scroll follower once the entrance is done.
+      if (lastWaypoint) {
+        // If the user scrolled during the intro, adopt the correct scroll target.
+        applyWaypoint(lastWaypoint.fromKey, lastWaypoint.toKey, lastWaypoint.p, true);
+      } else {
+        targetPos.copy(ball.position);
+        targetScale = ball.scale.x;
+      }
+      followEnabled = true;
+      enableDrag();
+    },
   });
 }
 
@@ -238,7 +273,7 @@ function lerp(a, b, t) { return a + (b - a) * t; }
 function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
 function depthOffset(y) { return y < 0 ? y * 0.4 : 0; }
 
-function applyWaypoint(fromKey, toKey, p) {
+function applyWaypoint(fromKey, toKey, p, snap = false) {
   if (!ball) return;
   lastWaypoint = { fromKey, toKey, p };
   const set = SECTIONS();
@@ -249,8 +284,12 @@ function applyWaypoint(fromKey, toKey, p) {
   const y = lerp(from.y, to.y, ey);
   const z = lerp(from.z, to.z, p) + depthOffset(y);
   const s = lerp(from.scale, to.scale, p);
-  ball.position.set(x, y, z);
-  ball.scale.setScalar(baseScale * s);
+  targetPos.set(x, y, z);
+  targetScale = baseScale * s;
+  if (snap) {
+    ball.position.copy(targetPos);
+    ball.scale.setScalar(targetScale);
+  }
 }
 
 function setSection(name) {
@@ -260,23 +299,25 @@ function setSection(name) {
 }
 
 function setupScrollBall() {
+  // No GSAP scrub — onUpdate just sets the target; the render loop eases toward
+  // it for smooth, self-settling motion.
   // Hero -> Stats
   ScrollTrigger.create({
-    trigger: '#stats-section', start: 'top bottom', end: 'top top', scrub: 2,
+    trigger: '#stats-section', start: 'top bottom', end: 'top top',
     onUpdate: (self) => applyWaypoint('hero', 'stats', self.progress),
     onEnter: () => setSection('stats'),
     onLeaveBack: () => setSection('hero'),
   });
   // Stats -> How
   ScrollTrigger.create({
-    trigger: '#how-section', start: 'top bottom', end: 'top top', scrub: 2,
+    trigger: '#how-section', start: 'top bottom', end: 'top top',
     onUpdate: (self) => applyWaypoint('stats', 'how', self.progress),
     onEnter: () => setSection('how'),
     onLeaveBack: () => setSection('stats'),
   });
   // How -> Footer
   ScrollTrigger.create({
-    trigger: '#site-footer', start: 'top bottom', end: 'top top', scrub: 2,
+    trigger: '#site-footer', start: 'top bottom', end: 'top top',
     onUpdate: (self) => applyWaypoint('how', 'footer', self.progress),
     onEnter: () => setSection('footer'),
     onLeaveBack: () => setSection('how'),
@@ -351,9 +392,17 @@ document.getElementById('nav-arrow')?.addEventListener('click', () => {
    ============================================================ */
 function animate() {
   requestAnimationFrame(animate);
-  if (ball && !isDragging) {
-    ball.rotation.x += autoVel.x;
-    ball.rotation.y += autoVel.y;
+  if (ball) {
+    // Smoothly ease the model toward the scroll-driven target every frame.
+    if (followEnabled) {
+      ball.position.lerp(targetPos, FOLLOW);
+      const s = ball.scale.x + (targetScale - ball.scale.x) * FOLLOW;
+      ball.scale.setScalar(s);
+    }
+    if (!isDragging) {
+      ball.rotation.x += autoVel.x;
+      ball.rotation.y += autoVel.y;
+    }
   }
   renderer.render(scene, camera);
 }
@@ -362,32 +411,40 @@ animate();
 /* ============================================================
    RESIZE
    ============================================================ */
-let lastWidth = window.innerWidth;
+let lastW = viewSize().w;
+let lastH = viewSize().h;
 let resizeTimer = null;
 
 function handleResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  const { w, h } = viewSize();
+  // The CSS box hasn't actually changed (e.g. just the address bar sliding) —
+  // do nothing so the model stays perfectly still.
+  if (w === lastW && h === lastH) return;
+
+  const widthChanged = w !== lastW;
+  lastW = w;
+  lastH = h;
+
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(w, h, false);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-  // Re-place the ball for the current breakpoint so it never drifts off
+  // Snap the model to its current target so it doesn't visibly ease after resize
   if (ball) {
     if (lastWaypoint) {
-      applyWaypoint(lastWaypoint.fromKey, lastWaypoint.toKey, lastWaypoint.p);
+      applyWaypoint(lastWaypoint.fromKey, lastWaypoint.toKey, lastWaypoint.p, true);
     } else {
       const hero = SECTIONS().hero;
       ball.position.set(hero.x, hero.y, hero.z);
       ball.scale.setScalar(baseScale * hero.scale);
+      targetPos.copy(ball.position);
+      targetScale = ball.scale.x;
     }
   }
 
   // Only recompute scroll positions on a real layout change (width / rotation).
-  // Height-only changes are the mobile address bar and must not trigger a refresh.
-  if (window.innerWidth !== lastWidth) {
-    lastWidth = window.innerWidth;
-    ScrollTrigger.refresh();
-  }
+  if (widthChanged) ScrollTrigger.refresh();
 }
 
 window.addEventListener('resize', () => {
