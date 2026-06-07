@@ -49,12 +49,29 @@ scene.add(new THREE.HemisphereLight(0xfff0dd, 0xcfc0ae, 0.4));
    ============================================================ */
 const BALL_SCALE = 0.97;
 const FOOTER_SCALE = 0.5;
-const SECTIONS = {
-  hero:   { x:  0.5, y: -0.45, z:  0,    scale: BALL_SCALE },
-  stats:  { x:  2.2, y:  0.0,  z:  0,    scale: BALL_SCALE },
-  how:    { x: -2.2, y:  0.0,  z:  0,    scale: BALL_SCALE },
-  footer: { x:  2.5, y: -1.3,  z: -2.0,  scale: FOOTER_SCALE },
+
+// Per-viewport waypoints. On phones the model is centred and dropped lower so
+// it floats cleanly under the headline (never behind it), and flies fully off
+// to the side during the content sections.
+const WAYPOINTS = {
+  desktop: {
+    hero:   { x:  0.5, y: -0.45, z:  0,    scale: BALL_SCALE },
+    stats:  { x:  2.2, y:  0.0,  z:  0,    scale: BALL_SCALE },
+    how:    { x: -2.2, y:  0.0,  z:  0,    scale: BALL_SCALE },
+    footer: { x:  2.5, y: -1.3,  z: -2.0,  scale: FOOTER_SCALE },
+  },
+  mobile: {
+    hero:   { x:  0.0, y: -0.95, z:  0,    scale: 0.55 },
+    stats:  { x:  2.8, y: -0.5,  z:  0,    scale: 0.55 },
+    how:    { x: -2.8, y: -0.5,  z:  0,    scale: 0.55 },
+    footer: { x:  3.0, y: -1.3,  z: -2.0,  scale: 0.42 },
+  },
 };
+
+const MOBILE_BP = 600;
+const isMobile = () => window.innerWidth <= MOBILE_BP;
+const SECTIONS = () => (isMobile() ? WAYPOINTS.mobile : WAYPOINTS.desktop);
+let lastWaypoint = null;
 
 let ball = null;
 let baseScale = 1;
@@ -79,8 +96,9 @@ loader.load('/models/basketball.glb', (gltf) => {
   // Normalize scale so longest axis = 2.4 units
   const size = box.getSize(new THREE.Vector3());
   baseScale = 2.4 / Math.max(size.x, size.y, size.z);
-  ball.scale.setScalar(baseScale * SECTIONS.hero.scale);
-  ball.position.set(SECTIONS.hero.x, SECTIONS.hero.y, SECTIONS.hero.z);
+  const hero = SECTIONS().hero;
+  ball.scale.setScalar(baseScale * hero.scale);
+  ball.position.set(hero.x, hero.y, hero.z);
 
   // Material overrides — gritty street look
   ball.traverse((child) => {
@@ -107,8 +125,8 @@ loader.load('/models/basketball.glb', (gltf) => {
    ENTRANCE ANIMATION (one-time)
    ============================================================ */
 function ballEntrance() {
-  const finalScale = baseScale * SECTIONS.hero.scale;
-  const finalY = SECTIONS.hero.y;
+  const finalScale = baseScale * SECTIONS().hero.scale;
+  const finalY = SECTIONS().hero.y;
 
   ball.scale.setScalar(finalScale * 0.25);
   ball.position.y = finalY - 0.8;
@@ -165,6 +183,8 @@ function onDown(e) {
 
 function onMove(e) {
   if (!isDragging || !ball) return;
+  // While actively spinning the ball, stop the page from scrolling under the touch
+  if (e.cancelable) e.preventDefault();
   const p = getPos(e);
   velocity.x = (p.y - prevMouse.y) * 0.006;
   velocity.y = (p.x - prevMouse.x) * 0.006;
@@ -203,7 +223,7 @@ canvas.addEventListener('mousedown', onDown);
 window.addEventListener('mousemove', onMove);
 window.addEventListener('mouseup', onUp);
 canvas.addEventListener('touchstart', onDown, { passive: true });
-window.addEventListener('touchmove', onMove, { passive: true });
+window.addEventListener('touchmove', onMove, { passive: false });
 window.addEventListener('touchend', onUp);
 
 /* ============================================================
@@ -213,8 +233,12 @@ function lerp(a, b, t) { return a + (b - a) * t; }
 function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
 function depthOffset(y) { return y < 0 ? y * 0.4 : 0; }
 
-function applyWaypoint(from, to, p) {
+function applyWaypoint(fromKey, toKey, p) {
   if (!ball) return;
+  lastWaypoint = { fromKey, toKey, p };
+  const set = SECTIONS();
+  const from = set[fromKey];
+  const to = set[toKey];
   const ey = easeInOut(p);
   const x = lerp(from.x, to.x, p);
   const y = lerp(from.y, to.y, ey);
@@ -234,21 +258,21 @@ function setupScrollBall() {
   // Hero -> Stats
   ScrollTrigger.create({
     trigger: '#stats-section', start: 'top bottom', end: 'top top', scrub: 2,
-    onUpdate: (self) => applyWaypoint(SECTIONS.hero, SECTIONS.stats, self.progress),
+    onUpdate: (self) => applyWaypoint('hero', 'stats', self.progress),
     onEnter: () => setSection('stats'),
     onLeaveBack: () => setSection('hero'),
   });
   // Stats -> How
   ScrollTrigger.create({
     trigger: '#how-section', start: 'top bottom', end: 'top top', scrub: 2,
-    onUpdate: (self) => applyWaypoint(SECTIONS.stats, SECTIONS.how, self.progress),
+    onUpdate: (self) => applyWaypoint('stats', 'how', self.progress),
     onEnter: () => setSection('how'),
     onLeaveBack: () => setSection('stats'),
   });
   // How -> Footer
   ScrollTrigger.create({
     trigger: '#site-footer', start: 'top bottom', end: 'top top', scrub: 2,
-    onUpdate: (self) => applyWaypoint(SECTIONS.how, SECTIONS.footer, self.progress),
+    onUpdate: (self) => applyWaypoint('how', 'footer', self.progress),
     onEnter: () => setSection('footer'),
     onLeaveBack: () => setSection('how'),
   });
@@ -338,6 +362,18 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  // Re-place the ball for the current breakpoint so it never drifts off
+  if (ball) {
+    if (lastWaypoint) {
+      applyWaypoint(lastWaypoint.fromKey, lastWaypoint.toKey, lastWaypoint.p);
+    } else {
+      const hero = SECTIONS().hero;
+      ball.position.set(hero.x, hero.y, hero.z);
+      ball.scale.setScalar(baseScale * hero.scale);
+    }
+  }
+  ScrollTrigger.refresh();
 });
 
 /* ============================================================
